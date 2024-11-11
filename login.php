@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html>
-
+<link rel="stylesheet" type="text/css" href="login.css" />
 <head>
     <title>LOGIN</title>
     <link rel="stylesheet" type="text/css" href="style.css">
@@ -9,13 +9,35 @@
 <body>
     <form action="login.php" method="post">
         <h2>LOGIN</h2> <?php if (isset($_GET['error'])) { ?> <p class="error"><?php echo $_GET['error']; ?></p>
-        <?php } ?> <label>User Name</label> <input type="text" name="uname" placeholder="User Name"><br>
+        <?php } ?> <label>Email</label> <input type="text" name="uname" placeholder="email@address.com"><br>
         <label>Password</label> <input type="password" name="password" placeholder="Password"><br> <button
             type="submit">Login</button>
     </form>
 </body>
 
-<?php session_start(); include "db_conn.php";if (isset($_POST['uname']) && isset($_POST['password'])) {    function validate($data){       $data = trim($data);       $data = stripslashes($data);       $data = htmlspecialchars($data);       return $data;    }    $uname = validate($_POST['uname']);    $pass = validate($_POST['password']);    if (empty($uname)) {        header("Location: index.php?error=User Name is required");        exit();    }else if(empty($pass)){        header("Location: index.php?error=Password is required");        exit();    }else{        $sql = "SELECT * FROM users WHERE user_name='$uname' AND password='$pass'";        $result = mysqli_query($conn, $sql);        if (mysqli_num_rows($result) === 1) {            $row = mysqli_fetch_assoc($result);            if ($row['user_name'] === $uname && $row['password'] === $pass) {                echo "Logged in!";                $_SESSION['user_name'] = $row['user_name'];                $_SESSION['name'] = $row['name'];                $_SESSION['id'] = $row['id'];                header("Location: home.php");                exit();            }else{                header("Location: index.php?error=Incorect User name or password");                exit();            }        }else{            header("Location: index.php?error=Incorect User name or password");            exit();        }    }}else{    header("Location: index.php");    exit();}?>
+<?php 
+ini_set('display_errors', '0');
+session_start();
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $email = htmlspecialchars($_POST['email']);
+    $password = $_POST['password'];
+    
+    $conn = new mysqli("localhost", "root", "", "weg_reg");
+    $stmt = $conn->prepare("SELECT id, password FROM users WHERE email = ?");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $stmt->bind_result($id, $hashed_password);
+    
+    if ($stmt->fetch() && password_verify($password, $hashed_password)) {
+        $_SESSION['user_id'] = $id;
+        header("Location: dashboard.php");
+    } else {
+        echo "Invalid login.";
+    }
+    
 
+    $stmt->close();
+    $conn->close();
+} ?>
 
 </html>
