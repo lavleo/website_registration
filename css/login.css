@@ -1,30 +1,42 @@
 :root {
     --primary-color: #4a90e2;
     --secondary-color: #f5a623;
-    --background-color: #f0f4f8;
+    --background-color: #ffffff;
     --text-color: #333;
     --error-color: #e74c3c;
     --success-color: #2ecc71;
     --box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-  }
-  
-  * {
+}
+
+* {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-  }
-  
-  body {
+}
+
+body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: var(--background-color);
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
     color: var(--text-color);
-  }
-  
-  form {
+}
+
+.center-image {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.center-image img {
+    max-width: 150px; /* Set the max width you prefer */
+    height: auto;
+}
+
+form {
     background-color: white;
     padding: 2rem;
     border-radius: 10px;
@@ -32,36 +44,36 @@
     width: 100%;
     max-width: 400px;
     transition: transform 0.3s ease;
-  }
-  
-  form:hover {
+}
+
+form:hover {
     transform: translateY(-5px);
-  }
-  
-  h2 {
+}
+
+h2 {
     text-align: center;
     color: var(--primary-color);
     margin-bottom: 1.5rem;
     font-size: 2rem;
-  }
-  
-  .error {
+}
+
+.error {
     background-color: var(--error-color);
     color: white;
     padding: 0.5rem;
     border-radius: 5px;
     margin-bottom: 1rem;
     text-align: center;
-  }
-  
-  label {
+}
+
+label {
     display: block;
     margin-bottom: 0.5rem;
     font-weight: bold;
-  }
-  
-  input[type="text"],
-  input[type="password"] {
+}
+
+input[type="text"],
+input[type="password"] {
     width: 100%;
     padding: 0.8rem;
     margin-bottom: 1rem;
@@ -69,15 +81,15 @@
     border-radius: 5px;
     font-size: 1rem;
     transition: border-color 0.3s ease;
-  }
-  
-  input[type="text"]:focus,
-  input[type="password"]:focus {
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus {
     border-color: var(--primary-color);
     outline: none;
-  }
-  
-  button {
+}
+
+button {
     width: 100%;
     padding: 1rem;
     background-color: var(--primary-color);
@@ -87,77 +99,32 @@
     font-size: 1rem;
     cursor: pointer;
     transition: background-color 0.3s ease;
-  }
-  
-  button:hover {
+}
+
+button:hover {
     background-color: var(--secondary-color);
-  }
-  
-  @media (max-width: 480px) {
+}
+
+@media (max-width: 480px) {
     form {
-      width: 90%;
-      padding: 1.5rem;
+        width: 90%;
+        padding: 1.5rem;
     }
-  }
-  
-  /* Custom checkbox styles */
-  input[type="checkbox"] {
-    display: none;
-  }
-  
-  .checkbox-label {
-    position: relative;
-    padding-left: 30px;
-    cursor: pointer;
-    display: inline-block;
-    margin-bottom: 1rem;
-  }
-  
-  .checkbox-label:before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 20px;
-    height: 20px;
-    border: 2px solid #ddd;
-    border-radius: 3px;
-    transition: all 0.3s ease;
-  }
-  
-  input[type="checkbox"]:checked + .checkbox-label:before {
-    background-color: var(--primary-color);
-    border-color: var(--primary-color);
-  }
-  
-  .checkbox-label:after {
-    content: '\2714';
-    position: absolute;
-    top: 0;
-    left: 4px;
-    font-size: 16px;
-    color: white;
-    transition: all 0.3s ease;
-    opacity: 0;
-  }
-  
-  input[type="checkbox"]:checked + .checkbox-label:after {
-    opacity: 1;
-  }
-  
-  /* Animation for form elements */
-  @keyframes fadeIn {
+}
+
+/* Animation for form elements */
+@keyframes fadeIn {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
-  }
-  
-  form > * {
+}
+
+form > * {
     animation: fadeIn 0.5s ease forwards;
     opacity: 0;
-  }
-  
-  form > *:nth-child(1) { animation-delay: 0.1s; }
-  form > *:nth-child(2) { animation-delay: 0.2s; }
-  form > *:nth-child(3) { animation-delay: 0.3s; }
-  form > *:nth-child(4) { animation-delay: 0.4s; }
-  form > *:nth-child(5) { animation-delay: 0.5s; }
+}
+
+form > *:nth-child(1) { animation-delay: 0.1s; }
+form > *:nth-child(2) { animation-delay: 0.2s; }
+form > *:nth-child(3) { animation-delay: 0.3s; }
+form > *:nth-child(4) { animation-delay: 0.4s; }
+form > *:nth-child(5) { animation-delay: 0.5s; }

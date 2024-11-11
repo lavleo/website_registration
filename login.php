@@ -1,28 +1,44 @@
 <!DOCTYPE html>
-<html>
-<link rel="stylesheet" type="text/css" href="login.css" />
+<html lang="en">
 <head>
-    <title>LOGIN</title>
-    <link rel="stylesheet" type="text/css" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="stylesheet" type="text/css" href="css/login.css" />
 </head>
-
 <body>
-    <form action="login.php" method="post">
-        <h2>LOGIN</h2> <?php if (isset($_GET['error'])) { ?> <p class="error"><?php echo $_GET['error']; ?></p>
-        <?php } ?> <label>Email</label> <input type="text" name="uname" placeholder="email@address.com"><br>
-        <label>Password</label> <input type="password" name="password" placeholder="Password"><br> <button
-            type="submit">Login</button>
+    <div class="center-image">
+        <img src="images/u2.png" alt="Logo" />
+    </div>
+    <form action="" method="post">
+        <h2>Login</h2>
+        <?php if (isset($_GET['error'])) { ?>
+            <p class="error"><?php echo htmlspecialchars($_GET['error']); ?></p>
+        <?php } ?>
+        <label for="email">Email</label>
+        <input type="text" name="email" placeholder="email@address.com" required><br>
+        
+        <label for="password">Password</label>
+        <input type="password" name="password" placeholder="Password" required><br>
+        
+        <button type="submit">Login</button>
     </form>
-</body>
 
 <?php 
-ini_set('display_errors', '0');
+ini_set('display_errors', '1');
+error_reporting(E_ALL);
 session_start();
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email = htmlspecialchars($_POST['email']);
+    $email = filter_var(trim($_POST['email']), FILTER_SANITIZE_EMAIL);
     $password = $_POST['password'];
     
     $conn = new mysqli("localhost", "root", "", "weg_reg");
+
+    if ($conn->connect_error) {
+        die("Connection failed: " . $conn->connect_error);
+    }
+    
     $stmt = $conn->prepare("SELECT id, password FROM users WHERE email = ?");
     $stmt->bind_param("s", $email);
     $stmt->execute();
@@ -31,13 +47,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if ($stmt->fetch() && password_verify($password, $hashed_password)) {
         $_SESSION['user_id'] = $id;
         header("Location: dashboard.php");
+        exit();
     } else {
-        echo "Invalid login.";
+        header("Location: login.php?error=Invalid login.");
+        exit();
     }
     
-
     $stmt->close();
     $conn->close();
-} ?>
+}
+?>
 
+</body>
 </html>
