@@ -89,19 +89,21 @@
         $login_type = $_POST['login_type'];
         $conn = new mysqli("localhost", "root", "", "web_reg");
 
-        // Fetch email, password based on type of Login
+        // Fetch login information based on whether login is for a "user" or "organization"
         if ($login_type === "user") 
         {
-            $stmt = $conn->prepare("SELECT id, password FROM users WHERE email = ?");
+            $stmt = $conn->prepare("SELECT id, first_name, last_name, password FROM users WHERE email = ?");
+            $stmt->bind_param("s", $email);
+            $stmt->execute();
+            $stmt->bind_result($id, $first_name, $last_name, $hashed_password);
         } 
         else 
         {
-            $stmt = $conn->prepare("SELECT id, password FROM organizations WHERE email = ?");
+            $stmt = $conn->prepare("SELECT id, organization_name, password FROM organizations WHERE email = ?");
+            $stmt->bind_param("s", $email);
+            $stmt->execute();
+            $stmt->bind_result($id, $organization_name, $hashed_password);
         }
-        
-        $stmt->bind_param("s", $email);
-        $stmt->execute();
-        $stmt->bind_result($id, $hashed_password);
 
         // Verify Login
         if ($stmt->fetch() && password_verify($password, $hashed_password)) 
@@ -109,9 +111,19 @@
             // Generate a unique token for the tab session
             $tab_token = bin2hex(random_bytes(16));
         
-            // Store user_id and login_type in the session under tab-specific keys
-            $_SESSION["user_id_$tab_token"] = $id;
-            $_SESSION["login_type_$tab_token"] = $login_type;
+            // Store user_id, user_name, and login_type in the session under tab-specific keys
+            if ($login_type === "user")
+            { 
+                $_SESSION["user_id_$tab_token"] = $id;
+                $_SESSION["user_name_$tab_token"] = "$first_name $last_name";
+                $_SESSION["login_type_$tab_token"] = $login_type;
+            }
+            else 
+            {
+                $_SESSION["user_id_$tab_token"] = $id;
+                $_SESSION["user_name_$tab_token"] = $organization_name;
+                $_SESSION["login_type_$tab_token"] = $login_type;
+            }
 
             // Redirect to the appropriate dashboard with the token in the URL
             $redirect_page = $login_type === "user" ? "user_dashboard.php" : "organization_dashboard.php";

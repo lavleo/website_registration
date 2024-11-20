@@ -50,7 +50,7 @@
                     <input type="tel" name="phone" placeholder="Organization Phone Number: 000-000-000" pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}" title="Must follow the 000-000-0000 format." required>
                     <input type="password" name="password" placeholder="Password" pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,24}$" title="Password must be 8-24 characters long, with at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)" required>
                     <label>
-                        <input type="checkbox" name="marketing_opt_in" value="1"> I would like to receive marketing emails
+                        <input type="checkbox" name="marketing_opt_in" value="1"> I would like to receive marketing emails.
                     </label>
                     <button type="submit">Register</button>
                 </form>
@@ -94,125 +94,169 @@
 <!-- PHP --->
 <!---------->
 <?php
-    // Disable PHP error messages from printing to the page
+    // Start output buffering and the session
+    session_start();
+
+    // Disable error messages from printing to the page
     ini_set('display_errors', '0');
 
-    // Method for registering
-    if ($_SERVER["REQUEST_METHOD"] == "POST") 
+    // Define helper function for validation
+    function validate_registration_form($type, $data) 
     {
-        $registration_type = $_POST['registration_type'];
+        $errors = [];
         $conn = new mysqli("localhost", "root", "", "web_reg");
 
-        // Fetch fields based on type of Registration
-        if ($registration_type === "user") 
+        if ($type === 'user') 
         {
-            // Extract fields
-            $first_name = htmlspecialchars($_POST['first_name']);
-            $last_name = htmlspecialchars($_POST['last_name']);
-            $email = htmlspecialchars($_POST['email']);
-            $phone = htmlspecialchars($_POST['phone']);
-            $age = $_POST['age'];
-            $password = $_POST['password'];
-            $marketing_opt_in = isset($_POST['marketing_opt_in']) ? 1 : 0; 
-            $corporate_user_check = isset($_POST['corporate_user_check']) ? 1 : 0; 
-
-            // Check for duplicate email
-            $stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
-            $stmt->bind_param("s", $email);
-            $stmt->execute();
-            $stmt->store_result();
-            if ($stmt->num_rows > 0) {
-                echo "<p id='error'>A user with this email already exists. Please use a different email.</p>";
-                $stmt->close();
-                $conn->close();
-                exit();
-            }
-            $stmt->close();
-
-            // Check for duplicate phone number
-            $stmt = $conn->prepare("SELECT id FROM users WHERE phone = ?");
-            $stmt->bind_param("s", $phone);
-            $stmt->execute();
-            $stmt->store_result();
-            if ($stmt->num_rows > 0) {
-                echo "<p id='error'>A user with this phone number already exists. Please use a different phone number.</p>";
-                $stmt->close();
-                $conn->close();
-                exit();
-            }
-            $stmt->close();
-
-            // If no duplicates, proceed with registration
-            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("INSERT INTO users (first_name, last_name, email, phone, age, password, marketing_opt_in, corporate_user_check) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("ssssisii", $first_name, $last_name, $email, $phone, $age, $hashed_password, $marketing_opt_in, $corporate_user_check);
-
-            if ($stmt->execute()) 
+            // Validate first name and last name
+            if (empty($data['first_name']) || strlen($data['first_name']) > 50) 
             {
-                header("Refresh: 2; URL=login.php");
+                $errors[] = "First name is required and must be less than 50 characters.";
+            }
+
+            if (empty($data['last_name']) || strlen($data['last_name']) > 50) 
+            {
+                $errors[] = "Last name is required and must be less than 50 characters.";
+            }
+
+            // Validate email
+            if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) 
+            {
+                $errors[] = "Invalid email format.";
+            }
+
+            // Validate phone number
+            if (!preg_match("/^[0-9]{3}-[0-9]{3}-[0-9]{4}$/", $data['phone'])) 
+            {
+                $errors[] = "Phone number must follow the format 000-000-0000.";
+            }
+
+            // Validate age
+            if (!filter_var($data['age'], FILTER_VALIDATE_INT, ["options" => ["min_range" => 18]])) 
+            {
+                $errors[] = "Age must be 18 or older.";
+            }
+
+            // Validate password
+            if (!preg_match("/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,24}$/", $data['password'])) 
+            {
+                $errors[] = "Password must be 8-24 characters long, with at least one uppercase letter, one lowercase letter, one number, and one special character.";
+            }
+
+            // Ensure that the email/password fields are not duplicates
+            $stmt = $conn->prepare("SELECT id FROM users WHERE email = ? OR phone = ?");
+            $stmt->bind_param("ss", $data['email'], $data['phone']);
+            $stmt->execute();
+            $stmt->store_result();
+            if ($stmt->num_rows > 0) 
+            {
+                $errors[] = "A user with this email or phone number already exists.";
+            }
+            $stmt->close();
+        } 
+        else if ($type === 'organization') 
+        {
+            // Validate organization name
+            if (empty($data['organization_name']) || strlen($data['organization_name']) > 100) 
+            {
+                $errors[] = "Organization name is required and must be less than 100 characters.";
+            }
+
+            // Validate email
+            if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) 
+            {
+                $errors[] = "Invalid email format.";
+            }
+
+            // Validate phone number
+            if (!preg_match("/^[0-9]{3}-[0-9]{3}-[0-9]{4}$/", $data['phone'])) 
+            {
+                $errors[] = "Phone number must follow the format 000-000-0000.";
+            }
+
+            // Validate password
+            if (!preg_match("/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,24}$/", $data['password'])) 
+            {
+                $errors[] = "Password must be 8-24 characters long, with at least one uppercase letter, one lowercase letter, one number, and one special character.";
+            }
+
+            // Ensure that the email/password fields are not duplicates
+            $stmt = $conn->prepare("SELECT id FROM organizations WHERE email = ? OR phone = ?");
+            $stmt->bind_param("ss", $data['email'], $data['phone']);
+            $stmt->execute();
+            $stmt->store_result();
+            if ($stmt->num_rows > 0) 
+            {
+                $errors[] = "An organization with this email or phone number already exists.";
+            }
+            $stmt->close();
+        } 
+        else 
+        {
+            $errors[] = "Invalid registration type.";
+        }
+
+        return $errors;
+    }
+
+    // Process form submission
+    if ($_SERVER["REQUEST_METHOD"] === "POST") 
+    {
+        // Validate registration type
+        $registration_type = $_POST['registration_type'] ?? null;
+        if (in_array($registration_type, ['user', 'organization'], true) === false) 
+        {
+            die("<p id='error'>Invalid registration type.</p>");
+        }
+
+        // Sanitize input data
+        $data = array_map('htmlspecialchars', $_POST);
+
+        // Perform validation
+        $errors = validate_registration_form($registration_type, $data);
+
+        // Proceed with user insertions into the DB
+        if (empty($errors)) 
+        {
+            $conn = new mysqli("localhost", "root", "", "web_reg");
+            $data['corporate_user_check'] = isset($data['corporate_user_check']) ? 1 : 0; 
+            $data['marketing_opt_in'] = isset($data['marketing_opt_in']) ? 1 : 0; 
+
+            if ($registration_type === "user") 
+            {
+                // Insert the new user
+                $hashed_password = password_hash($data['password'], PASSWORD_DEFAULT);
+                $stmt = $conn->prepare("INSERT INTO users (first_name, last_name, email, phone, age, password, marketing_opt_in, corporate_user_check) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param("ssssisii", $data['first_name'], $data['last_name'], $data['email'], $data['phone'], $data['age'], $hashed_password, $data['marketing_opt_in'], $data['corporate_user_check']);
+                $stmt->execute();
+                $stmt->close();
+
                 echo "<p id='success'>Registration successful! Redirecting to login...</p>";
+                header("Refresh: 2; URL=login.php");
             } 
-            else 
+            else if ($registration_type === "organization") 
             {
-                echo "<p id='error'>Error: Could not register. Please try again.</p>";
+                // Insert the new organization
+                $hashed_password = password_hash($data['password'], PASSWORD_DEFAULT);
+                $stmt = $conn->prepare("INSERT INTO organizations (organization_name, email, phone, password, marketing_opt_in) VALUES (?, ?, ?, ?, ?)");
+                $stmt->bind_param("ssssi", $data['organization_name'], $data['email'], $data['phone'], $hashed_password, $data['marketing_opt_in']);
+                $stmt->execute();
+                $stmt->close();
+
+                echo "<p id='success'>Registration successful! Redirecting to login...</p>";
+                header("Refresh: 2; URL=login.php");
             }
-        
-            $stmt->close();
+
+            $conn->close();
         }
         else
         {
-            // Extract fields
-            $organization_name = htmlspecialchars($_POST['organization_name']);
-            $email = htmlspecialchars($_POST['email']);
-            $phone = htmlspecialchars($_POST['phone']);
-            $password = $_POST['password'];
-    
-            // Check for duplicate email
-            $stmt = $conn->prepare("SELECT id FROM organizations WHERE email = ?");
-            $stmt->bind_param("s", $email);
-            $stmt->execute();
-            $stmt->store_result();
-            if ($stmt->num_rows > 0) {
-                echo "<p id='error'>An organization with this email already exists. Please use a different email.</p>";
-                $stmt->close();
-                $conn->close();
-                exit();
-            }
-            $stmt->close();
-
-            // Check for duplicate phone number
-            $stmt = $conn->prepare("SELECT id FROM organizations WHERE phone = ?");
-            $stmt->bind_param("s", $phone);
-            $stmt->execute();
-            $stmt->store_result();
-            if ($stmt->num_rows > 0) {
-                echo "<p id='error'>A organization with this phone number already exists. Please use a different phone number.</p>";
-                $stmt->close();
-                $conn->close();
-                exit();
-            }
-            $stmt->close();
-
-            // If no duplicates, proceed with registration
-            $hashed_password = password_hash($_POST['password'], PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("INSERT INTO organizations (organization_name, email, phone, password) VALUES (?, ?, ?, ?)");
-            $stmt->bind_param("ssss", $organization_name, $email, $phone, $hashed_password);
-    
-            if ($stmt->execute()) 
+            // Display errors
+            foreach ($errors as $error) 
             {
-                header("Refresh: 2; URL=login.php");
-                echo "<p id='success'>Registration successful! Redirecting to login...</p>";
-            } 
-            else 
-            {
-                echo "<p id='error'>Error: Could not register. Please try again.</p>";
+                echo "<p id='error'>$error</p>";
             }
-    
-            $stmt->close();
         }
-
-        // Close connection
-        $conn->close();
     }
 ?>
 
