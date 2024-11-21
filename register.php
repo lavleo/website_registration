@@ -29,7 +29,10 @@
                     <input type="email" name="email" placeholder="Email" required>
                     <input type="tel" name="phone" placeholder="Phone Number: 000-000-0000" pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}" title="Must follow the 000-000-0000 format." required>
                     <input type="number" name="age" placeholder="Age" min="18" required>
-                    <input type="password" name="password" placeholder="Password" pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,24}$" title="Password must be 8-24 characters long, with at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)" required>
+                    <input type="password" name="password" id="password" placeholder="Password" onkeyup='check();' pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,24}$" title="Password must be 8-24 characters long, with at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)" required>
+                    <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm Password" onkeyup='check();' required>
+                    <span id='message'></span>
+                    <br><br>
                     <label>
                         <input type="checkbox" name="marketing_opt_in" value="1"> I would like to receive marketing emails.
                     </label>
@@ -48,7 +51,10 @@
                     <input type="text" name="organization_name" placeholder="Organization Name" required>
                     <input type="email" name="email" placeholder="Organization Email" required>
                     <input type="tel" name="phone" placeholder="Organization Phone Number: 000-000-000" pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}" title="Must follow the 000-000-0000 format." required>
-                    <input type="password" name="password" placeholder="Password" pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,24}$" title="Password must be 8-24 characters long, with at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)" required>
+                    <input type="password" name="password" id="org_password" placeholder="Password" onkeyup='check();' pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,24}$" title="Password must be 8-24 characters long, with at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)" required>
+                    <input type="password" name="confirm_password" id="org_confirm_password" placeholder="Confirm Password" onkeyup='check();' required>
+                    <span id='org_message'></span>
+                    <br><br>
                     <label>
                         <input type="checkbox" name="marketing_opt_in" value="1"> I would like to receive marketing emails.
                     </label>
@@ -83,10 +89,39 @@
                     document.getElementById("userButton").setAttribute("hidden", "hidden");
                 }
             }
+
+            // Indicate if passwords match
+            var check = function() 
+            {
+                // User password
+                if (document.getElementById('password').value == document.getElementById('confirm_password').value) 
+                {
+                    document.getElementById('message').style.color = 'green';
+                    document.getElementById('message').innerHTML = 'Passwords Matching';
+                }
+                else 
+                {
+                    document.getElementById('message').style.color = 'red';
+                    document.getElementById('message').innerHTML = 'Passwords not matching';
+                }
+                
+                // Organization password
+                if (document.getElementById('org_password').value == document.getElementById('org_confirm_password').value)
+                {
+                    document.getElementById('org_message').style.color = 'green';
+                    document.getElementById('org_message').innerHTML = 'Passwords Matching';
+                } 
+                else 
+                {                  
+                    document.getElementById('org_message').style.color = 'red';
+                    document.getElementById('org_message').innerHTML = 'Passwords not matching';
+                }
+            }
         </script>
 
         <!-- Login here button -->
-        <p>Already have an account? <a href = "login.php">Login here</a></p> 
+        <p>Already have an account? <a href = "login.php">Login here</a></p>
+        <br><br> 
     </body>
 </html>
 
@@ -143,6 +178,12 @@
                 $errors[] = "Password must be 8-24 characters long, with at least one uppercase letter, one lowercase letter, one number, and one special character.";
             }
 
+            // Confirm the password
+            if ($data['password'] !== $data['confirm_password']) 
+            {
+                $errors[] = "Passwords do not match. Please try again.";
+            }
+
             // Ensure that the email/password fields are not duplicates
             $stmt = $conn->prepare("SELECT id FROM users WHERE email = ? OR phone = ?");
             $stmt->bind_param("ss", $data['email'], $data['phone']);
@@ -180,6 +221,12 @@
                 $errors[] = "Password must be 8-24 characters long, with at least one uppercase letter, one lowercase letter, one number, and one special character.";
             }
 
+            // Confirm the password
+            if ($data['password'] !== $data['confirm_password']) 
+            {
+                $errors[] = "Passwords do not match. Please try again.";
+            }
+
             // Ensure that the email/password fields are not duplicates
             $stmt = $conn->prepare("SELECT id FROM organizations WHERE email = ? OR phone = ?");
             $stmt->bind_param("ss", $data['email'], $data['phone']);
@@ -196,6 +243,8 @@
             $errors[] = "Invalid registration type.";
         }
 
+        $conn->close();
+
         return $errors;
     }
 
@@ -204,10 +253,6 @@
     {
         // Validate registration type
         $registration_type = $_POST['registration_type'] ?? null;
-        if (in_array($registration_type, ['user', 'organization'], true) === false) 
-        {
-            die("<p id='error'>Invalid registration type.</p>");
-        }
 
         // Sanitize input data
         $data = array_map('htmlspecialchars', $_POST);
