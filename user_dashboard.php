@@ -2,25 +2,18 @@
 <!-- PHP --->
 <!---------->
 <?php
-    //ini_set('display_errors', '0');
+    ini_set('display_errors', '0');
     session_start();
 
-    // Check for the session `tab_token` in the URL and retrieve `user_id` and `login_type` based on it
-    if (!isset($_GET['tab_token'])) 
+    // Check for session `tab_token` in the URL, which is used to retrieve `user_id` and `login_type` based on it
+    if (!isset($_GET['tab_token']) || !isset($_SESSION["user_id_{$_GET['tab_token']}"]) || $_SESSION["login_type_{$_GET['tab_token']}"] !== "user") 
     {
         header("Location: login.php");
         exit();
     }
 
+    // Session variables
     $tab_token = $_GET['tab_token'];
-
-    // Ensure the session contains the expected user data for this `tab_token`
-    if (!isset($_SESSION["user_id_$tab_token"]) || $_SESSION["login_type_$tab_token"] !== "user") 
-    {
-        header("Location: login.php");
-        exit();
-    }
-
     $user_id = $_SESSION["user_id_$tab_token"];
     $user_name = $_SESSION["user_name_$tab_token"];
     $conn = new mysqli("localhost", "root", "", "web_reg");
@@ -51,6 +44,74 @@
         exit();
     }
 
+    // Handle password change
+    if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['change_password'])) 
+    {
+        $current_password = $_POST['current_password'];
+        $new_password = $_POST['new_password'];
+        $confirm_new_password = $_POST['confirm_new_password'];
+
+        // Retrieve the user's current hashed password from the database
+        $stmt = $conn->prepare("SELECT password FROM users WHERE id = ?");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $stmt->bind_result($hashed_password);
+        $stmt->fetch();
+        $stmt->close();
+
+        // Validate input
+        if (!password_verify($current_password, $hashed_password)) 
+        {
+            echo "<div class='modal-overlay' onclick='dismissModal()'>
+                        <div class='modal-message error'>
+                            <p>Current Password is incorrect.</p>
+                        </div>
+                  </div>";
+        } 
+        else if (!preg_match("/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,24}$/", $new_password))  
+        {
+            echo "<div class='modal-overlay' onclick='dismissModal()'>
+                        <div class='modal-message error'>
+                            <p>Password must be 8-24 characters long, with at least one uppercase letter, one lowercase letter, one number, and one special character.</p>
+                        </div>
+                  </div>";
+        } 
+        else if ($new_password !== $confirm_new_password) 
+        {
+            echo "<div class='modal-overlay' onclick='dismissModal()'>
+                        <div class='modal-message error'>
+                            <p>Passwords do not match.</p>
+                        </div>
+                  </div>";
+        } 
+        else 
+        {
+            // Update the user's password
+            $new_hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+            $stmt = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
+            $stmt->bind_param("si", $new_hashed_password, $user_id);
+
+            if ($stmt->execute()) 
+            {
+                echo "<div class='modal-overlay' onclick='dismissModal()'>
+                        <div class='modal-message success'>
+                            <p>Password changed sucessfully.</p>
+                        </div>
+                      </div>";
+            } 
+            else 
+            {
+                echo "<div class='modal-overlay' onclick='dismissModal()'>
+                        <div class='modal-message error'>
+                            <p>Error changing password, please try again later.</p>
+                        </div>
+                      </div>";
+            }
+
+            $stmt->close();
+        }
+    }
+    
     // Handle cancellation of a registration
     if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['cancel_registration'])) 
     {
@@ -68,7 +129,11 @@
         // Validate input
         if (!$validShift) 
         {
-            echo "<p class='error'>Invalid registration or unauthorized action.</p>";
+            echo "<div class='modal-overlay' onclick='dismissModal()'>
+                    <div class='modal-message error'>
+                        <p>Invalid registration or unauthorized action.</p>
+                    </div>
+                  </div>";
         }
         else
         {
@@ -84,8 +149,12 @@
             $stmt->execute();
             $stmt->close();
         
-            echo "<p class='success'>Registration canceled successfully!</p>";
-            header("Location: user_dashboard.php?tab_token=$tab_token");
+            echo "<div class='modal-overlay' onclick='dismissModal()'>
+                    <div class='modal-message success'>
+                        <p>Registration canceled successfully!</p>
+                    </div>
+                  </div>";
+            header("Refresh: 1; URL=user_dashboard.php?tab_token=$tab_token");
         }
     }
 
@@ -180,23 +249,43 @@
         // Validate input
         if ($signature !== $user_name) 
         {
-            echo "<p class='error'>Signature does not match the account name. Please sign the waiver before registering.</p>";
+            echo "<div class='modal-overlay' onclick='dismissModal()'>
+                    <div class='modal-message error'>
+                        <p>Signature does not match the account name. Please sign the waiver before registering.</p>
+                    </div>
+                 </div>";
         }
         else if (!$validShift) 
         {
-            echo "<p class='error'>Invalid shift selection.</p>";
+            echo "<div class='modal-overlay' onclick='dismissModal()'>
+                    <div class='modal-message error'>
+                        <p>Invalid shift selection.</p>
+                    </div>
+                 </div>";
         }
         else if ($conflictingShift) 
         {
-            echo "<p class='error'>You are already registered for a shift at this date and time.</p>";
+            echo "<div class='modal-overlay' onclick='dismissModal()'>
+                    <div class='modal-message error'>
+                        <p>You are already registered for a shift at this date and time.</p>
+                    </div>
+                 </div>";
         }
         else if ($group_size <= 0) 
         {
-            echo "<p class='error'>Invalid group size.</p>";
+            echo "<div class='modal-overlay' onclick='dismissModal()'>
+                    <div class='modal-message error'>
+                        <p>Invalid group size.</p>
+                    </div>
+                 </div>";
         }    
         else if ($slots_filled + $group_size > $max_slots) 
         {
-            echo "<p class='error'>This shift is full. Please try again later or reduce the number of members being registered.</p>";
+            echo "<div class='modal-overlay' onclick='dismissModal()'>
+                    <div class='modal-message error'>
+                        <p>This shift is full. Please try again later or reduce the number of members being registered.</p>
+                    </div>
+                 </div>";
         }
         else 
         {
@@ -212,8 +301,12 @@
             $stmt->execute();
             $stmt->close();
     
-            echo "<p class='success'>Successfully registered for the shift!</p>";
-            header("Location: user_dashboard.php?tab_token=$tab_token");
+            echo "<div class='modal-overlay' onclick='dismissModal()'>
+                    <div class='modal-message success'>
+                        <p>Successfully registered for the shift!</p>
+                    </div>
+                  </div>";
+            header("Refresh: 1; URL=user_dashboard.php?tab_token=$tab_token");
         }        
     }
 ?>
@@ -226,75 +319,185 @@
     <head>
         <meta charset="UTF-8">
         <title>User Dashboard</title>
-        <link rel="stylesheet" href="css/style.css">
+        <link rel="stylesheet" href="css/user_dashboard.css">
     </head>
 
-    <!-- Display user name -->
-    <h1>User Dashboard: <?php echo $user_name; ?></h1>
-
-    <body>
-         <!-- Logout Button -->
-        <form method="POST" action="user_dashboard.php?tab_token=<?php echo htmlspecialchars($tab_token); ?>">
+    <!-- Banner -->
+    <header>
+        <h1>Welcome, <?php echo $user_name; ?>!</h1>
+        <img src="images/u2.png" alt="Logo" />         
+         <form method="POST" action="user_dashboard.php?tab_token=<?php echo htmlspecialchars($tab_token); ?>">
             <button type="submit" name="logout">Logout</button>
         </form>
+    </header>
 
+    <!-- Banner-image -->
+     <div class="banner-image">
+        <img src="images/CollaborationBanner.jpg" alt="Banner Image" />
+    </div>
+
+    <body>
         <div class="container">
-             <!-- Search Available Shifts -->
-            <h2>Search Shifts</h2>
-            <form method="POST" action="user_dashboard.php?tab_token=<?php echo htmlspecialchars($tab_token); ?>">
-                <input type="date" name="date" placeholder="Date">
-                <input type="time" name="time" placeholder="Time">
-                <input type="text" name="location" placeholder="Location">
-                <input type="text" name="work_type" placeholder="Work Type">
-                <button type="submit" name="search">Search</button>
-            </form>
-            
-            <!-- Displays Available Shifts and Registration button -->
-            <h2>Available Shifts</h2>
-            <div class="shift-list">
-                <?php while ($shift = $shifts->fetch_assoc()) 
-                      { ?>
-                        <div class="shift">
-                            <p><b>Organization: <?php echo $shift['organization_name']; ?></b></p>
-                            <p>Date: <?php echo $shift['date']; ?></p>
-                            <p>Time: <?php echo $shift['time']; ?></p>
-                            <p>Location: <?php echo $shift['location']; ?></p>
-                            <p>Work Type: <?php echo $shift['work_type']; ?></p>
-                            <p>Available Slots: <?php echo $shift['max_slots'] - $shift['slots_filled']; ?></p>
-                            <form method="POST" action="user_dashboard.php?tab_token=<?php echo htmlspecialchars($tab_token); ?>">
-                                <input type="hidden" name="shift_id" value="<?php echo $shift['id']; ?>">
-                                <?php if ($corporate_user_check) 
-                                      { ?>
-                                        <input type="number" name="group_size" placeholder="Group Size" min="1" required>
-                                <?php } ?>
-                                <label><br><br>
-                                    I, <input type="text" name="signature" placeholder="Your Full Name" required> understand that this shift may involve certain risks, such as injuries or accidents. By signing up, I affirm that I, and all members that I may be registering on behalf of, are at least 18 years of age.
-                                </label>
-                                <button type="submit" name="register_shift">Sign Up</button>
-                            </form>
-                        </div>
-                <?php } ?>
+            <!-- Choose an active tab -->
+            <div class="tabs">
+                <div class="tab">Search Shifts</div>
+                <div class="tab">Active Registrations</div>
+                <div class="tab">Account Management</div>
             </div>
 
-             <!-- Displays Shifts the User has registered for and Cancel button-->
-            <h2>Your Active Registrations</h2>
-            <div class="registration-list">  
-                <?php while ($registration = $activeRegistrations->fetch_assoc()) 
-                      { ?>
-                        <div class="registration">
-                            <p><b>Organization: <?php echo $registration['organization_name']; ?></b></p>
-                            <p>Date: <?php echo $registration['date']; ?></p>
-                            <p>Time: <?php echo $registration['time']; ?></p>
-                            <p>Location: <?php echo $registration['location']; ?></p>
-                            <p>Work Type: <?php echo $registration['work_type']; ?></p>
-                            <p>Group Size: <?php echo $registration['group_size']; ?></p>
-                            <form method="POST" action="user_dashboard.php?tab_token=<?php echo htmlspecialchars($tab_token); ?>">
-                                <input type="hidden" name="shift_id" value="<?php echo $registration['shift_id']; ?>">
-                                <button type="submit" name="cancel_registration">Cancel Registration</button>
-                            </form>
-                        </div>
-                <?php } ?>
+            <div class="content">
+                 <!-- Displays available Shifts the user can register for-->
+                <div class="content-section" hidden="hidden">
+                    <h2>Search Shifts</h2>
+                    <form method="POST" action="user_dashboard.php?tab_token=<?php echo htmlspecialchars($tab_token); ?>">
+                        <input type="date" name="date" placeholder="Date">
+                        <input type="time" name="time" placeholder="Time">
+                        <input type="text" name="location" placeholder="Location">
+                        <input type="text" name="work_type" placeholder="Work Type">
+                        <button type="submit" name="search">Search</button>
+                    </form>
+                    
+                    <h2>Available Shifts</h2>
+                    <div class="shift-list">
+                        <?php while ($shift = $shifts->fetch_assoc()) 
+                              { ?>
+                                <div class="shift">
+                                    <p><b>Organization: <?php echo $shift['organization_name']; ?></b></p>
+                                    <p>Date: <?php echo $shift['date']; ?></p>
+                                    <p>Time: <?php echo $shift['time']; ?></p>
+                                    <p>Location: <?php echo $shift['location']; ?></p>
+                                    <p>Work Type: <?php echo $shift['work_type']; ?></p>
+                                    <p>Available Slots: <?php echo $shift['max_slots'] - $shift['slots_filled']; ?></p>
+                                    <form method="POST" action="user_dashboard.php?tab_token=<?php echo htmlspecialchars($tab_token); ?>">
+                                        <input type="hidden" name="shift_id" value="<?php echo $shift['id']; ?>">
+                                        <?php if ($corporate_user_check) 
+                                              { ?>
+                                                    <input type="number" id="group-size" name="group_size" placeholder="Group Size" min="1" required>
+                                        <?php } ?>
+                                        <label>
+                                            I, <input type="text" id="signature" name="signature" placeholder="Your Name" required> understand that this shift may involve certain risks, such as injuries or accidents. By signing up, I affirm that I—and all members that I may be registering on behalf of—are at least 18 years of age.
+                                        </label>
+                                        <button type="submit" name="register_shift">Sign Up</button>
+                                    </form>
+                                </div>
+                        <?php } ?>
+                    </div>
+                </div>
+
+                <!-- Displays Shifts the User has registered for and Cancel button-->
+                <div class="content-section" hidden="hidden">
+                    <h2>Your Active Registrations</h2>
+                    <div class="registration-list">  
+                        <?php while ($registration = $activeRegistrations->fetch_assoc()) 
+                              { ?>
+                                <div class="registration">
+                                    <p><b>Organization: <?php echo $registration['organization_name']; ?></b></p>
+                                    <p>Date: <?php echo $registration['date']; ?></p>
+                                    <p>Time: <?php echo $registration['time']; ?></p>
+                                    <p>Location: <?php echo $registration['location']; ?></p>
+                                    <p>Work Type: <?php echo $registration['work_type']; ?></p>
+                                    <p>Group Size: <?php echo $registration['group_size']; ?></p>
+                                    <form method="POST" action="user_dashboard.php?tab_token=<?php echo htmlspecialchars($tab_token); ?>">
+                                        <input type="hidden" name="shift_id" value="<?php echo $registration['shift_id']; ?>">
+                                        <button type="submit" name="cancel_registration">Cancel Registration</button>
+                                    </form>
+                                </div>
+                        <?php } ?>
+                    </div>
+                </div>
+
+                <!-- Allows the user to change their password-->
+                <div class="content-section" hidden="hidden">
+                    <h2>Change Password</h2>
+                    <form method="POST" id="passwordForm" action="user_dashboard.php?tab_token=<?php echo htmlspecialchars($tab_token); ?>">
+                        <label for="current_password">Current Password:</label>
+                        <input type="password" name="current_password" id="current_password" placeholder="Enter current password" required>
+                        <label for="new_password">New Password:</label>
+                        <input type="password" name="new_password" id="password" placeholder="Password" onkeyup='check();' pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,24}$" title="Password must be 8-24 characters long, with at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)" required>
+                        <input type="password" name="confirm_new_password" id="confirm_password" placeholder="Confirm Password" onkeyup='check();' required>
+                        <span id='errorMessage'></span>
+                        <button type="submit" name="change_password">Change Password</button>
+                    </form>
+                </div>
             </div>
         </div>
     </body>
+
+    <script>
+        // Indicate if passwords match
+        var check = function() 
+        {
+            if (document.getElementById('password').value == document.getElementById('confirm_password').value) 
+            {
+                document.getElementById('errorMessage').style.color = 'green';
+                document.getElementById('errorMessage').innerHTML = 'Passwords Matching';
+            }
+            else 
+            {
+                document.getElementById('errorMessage').style.color = 'red';
+                document.getElementById('errorMessage').innerHTML = 'Passwords not matching';
+            }
+        }
+
+        // To prevent user from submitting form if passwords don't match
+        document.getElementById('passwordForm').addEventListener('submit', function(event) 
+        {
+            const newPassword = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+
+            if (newPassword !== confirmPassword) 
+            {
+                // Prevent form submission
+                event.preventDefault();
+
+                // Optional: Focus the first mismatched input field
+                document.getElementById('confirm_password').focus();
+            }
+        });
+
+        // For switching tabs
+        document.addEventListener("DOMContentLoaded", () => 
+        {
+            const tabs = document.querySelectorAll(".tab");
+            const contentSections = document.querySelectorAll(".content-section");
+
+            tabs.forEach((tab, index) => 
+            {
+                tab.addEventListener("click", () => 
+                {
+                    // Remove active class from all tabs and sections
+                    tabs.forEach(t => t.classList.remove("active"));
+                    contentSections.forEach(section => section.style.display = "none");
+
+                    // Activate clicked tab and corresponding section
+                    tab.classList.add("active");
+                    contentSections[index].style.display = "block";
+                });
+            });
+
+            // Default to first tab active
+            tabs[0].classList.add("active");
+            contentSections[0].style.display = "block";
+        });
+
+        // Function to remove the modal overlay
+        function dismissModal() 
+        {
+            const modalOverlay = document.querySelector(".modal-overlay");
+            if (modalOverlay) 
+            {
+                modalOverlay.remove(); // Remove the overlay from the DOM
+            }
+        }
+
+        // Add an event listener to dismiss the modal when clicking on the overlay
+        document.addEventListener("DOMContentLoaded", () => 
+        {
+            const overlay = document.querySelector(".modal-overlay");
+            if (overlay) 
+            {
+                overlay.addEventListener("click", dismissModal);
+            }
+        });
+    </script>
 </html>

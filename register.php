@@ -22,7 +22,7 @@
             <!-- User Registration Form -->
             <div id="user" class="tab-content active">
                 <h2>User Registration</h2>
-                <form action="register.php" method="POST">
+                <form id="registration" action="register.php" method="POST">
                     <input type="hidden" name="registration_type" value="user">
                     <input type="text" name="first_name" placeholder="First Name" required>
                     <input type="text" name="last_name" placeholder="Last Name" required>
@@ -32,7 +32,7 @@
                     <input type="password" name="password" id="password" placeholder="Password" onkeyup='check();' pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,24}$" title="Password must be 8-24 characters long, with at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)" required>
                     <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm Password" onkeyup='check();' required>
                     <span id='message'></span>
-                    <br><br>
+                    <p></p>
                     <label>
                         <input type="checkbox" name="marketing_opt_in" value="1"> I would like to receive marketing emails.
                     </label>
@@ -46,15 +46,15 @@
             <!-- Organization Registration Form -->
             <div id="organization" class="tab-content" hidden="hidden">
                 <h2>Organization Registration</h2>
-                <form action="register.php" method="POST">
+                <form id="organization_registration" action="register.php" method="POST">
                     <input type="hidden" name="registration_type" value="organization">
                     <input type="text" name="organization_name" placeholder="Organization Name" required>
                     <input type="email" name="email" placeholder="Organization Email" required>
                     <input type="tel" name="phone" placeholder="Organization Phone Number: 000-000-000" pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}" title="Must follow the 000-000-0000 format." required>
-                    <input type="password" name="password" id="org_password" placeholder="Password" onkeyup='check();' pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,24}$" title="Password must be 8-24 characters long, with at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)" required>
-                    <input type="password" name="confirm_password" id="org_confirm_password" placeholder="Confirm Password" onkeyup='check();' required>
+                    <input type="password" name="password" id="org_password" placeholder="Password" onkeyup='org_check();' pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,24}$" title="Password must be 8-24 characters long, with at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)" required>
+                    <input type="password" name="confirm_password" id="org_confirm_password" placeholder="Confirm Password" onkeyup='org_check();' required>
                     <span id='org_message'></span>
-                    <br><br>
+                    <p></p>
                     <label>
                         <input type="checkbox" name="marketing_opt_in" value="1"> I would like to receive marketing emails.
                     </label>
@@ -68,61 +68,98 @@
                 <button class="tab-button" id="organizationButton" onclick="showTab('organization')">Organization Registration</button>
             </div>
         </div>
-            
-        <script>
-            // Toggle for user/organization registration
-            function showTab(tabName) 
-            {
-                if (tabName == "organization")
-                {
-                    document.getElementById("user").setAttribute("hidden", "hidden");
-                    document.getElementById("organization").removeAttribute("hidden");
-                    document.getElementById("organizationButton").setAttribute("hidden", "hidden");
-                    document.getElementById("userButton").removeAttribute("hidden");
-
-                }
-                else if (tabName == "user")
-                {
-                    document.getElementById("user").removeAttribute("hidden");
-                    document.getElementById("organization").setAttribute("hidden", "hidden");
-                    document.getElementById("organizationButton").removeAttribute("hidden");
-                    document.getElementById("userButton").setAttribute("hidden", "hidden");
-                }
-            }
-
-            // Indicate if passwords match
-            var check = function() 
-            {
-                // User password
-                if (document.getElementById('password').value == document.getElementById('confirm_password').value) 
-                {
-                    document.getElementById('message').style.color = 'green';
-                    document.getElementById('message').innerHTML = 'Passwords Matching';
-                }
-                else 
-                {
-                    document.getElementById('message').style.color = 'red';
-                    document.getElementById('message').innerHTML = 'Passwords not matching';
-                }
-                
-                // Organization password
-                if (document.getElementById('org_password').value == document.getElementById('org_confirm_password').value)
-                {
-                    document.getElementById('org_message').style.color = 'green';
-                    document.getElementById('org_message').innerHTML = 'Passwords Matching';
-                } 
-                else 
-                {                  
-                    document.getElementById('org_message').style.color = 'red';
-                    document.getElementById('org_message').innerHTML = 'Passwords not matching';
-                }
-            }
-        </script>
 
         <!-- Login here button -->
         <p>Already have an account? <a href = "login.php">Login here</a></p>
         <br><br> 
     </body>
+
+    <script>
+        // Toggle for user/organization registration
+        function showTab(tabName) 
+        {
+            if (tabName == "organization")
+            {
+                document.getElementById("user").setAttribute("hidden", "hidden");
+                document.getElementById("organization").removeAttribute("hidden");
+                document.getElementById("organizationButton").setAttribute("hidden", "hidden");
+                document.getElementById("userButton").removeAttribute("hidden");
+
+            }
+            else if (tabName == "user")
+            {
+                document.getElementById("user").removeAttribute("hidden");
+                document.getElementById("organization").setAttribute("hidden", "hidden");
+                document.getElementById("organizationButton").removeAttribute("hidden");
+                document.getElementById("userButton").setAttribute("hidden", "hidden");
+            }
+        }
+
+        // Indicate if passwords match (user)
+        var check = function() 
+        {
+            // User password
+            if (document.getElementById('password').value == document.getElementById('confirm_password').value) 
+            {
+                document.getElementById('message').style.color = 'green';
+                document.getElementById('message').innerHTML = 'Passwords Matching';
+
+            }
+            else 
+            {
+                document.getElementById('message').style.color = 'red';
+                document.getElementById('message').innerHTML = 'Passwords not matching';
+            }
+        }
+
+        // Indicate if passwords match (organization)
+        var org_check = function() 
+        {
+            // Organization password
+            if (document.getElementById('org_password').value == document.getElementById('org_confirm_password').value)
+            {
+                document.getElementById('org_message').style.color = 'green';
+                document.getElementById('org_message').innerHTML = 'Passwords Matching';
+            } 
+            else 
+            {                  
+                document.getElementById('org_message').style.color = 'red';
+                document.getElementById('org_message').innerHTML = 'Passwords not matching';
+            }
+        }
+
+        // To prevent user from submitting form if passwords don't match (user)
+        document.getElementById('registration').addEventListener('submit', function(event) 
+        {
+            const newPassword = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+
+            if (newPassword !== confirmPassword) 
+            {
+                // Prevent form submission
+                event.preventDefault();
+
+                // Optional: Focus the first mismatched input field
+                document.getElementById('confirm_password').focus();
+            }
+        });
+
+        // To prevent user from submitting form if passwords don't match (organization)
+        document.getElementById('organization_registration').addEventListener('submit', function(event) 
+        {
+            const newPassword = document.getElementById('org_password').value;
+            const confirmPassword = document.getElementById('org_confirm_password').value;
+
+            if (newPassword !== confirmPassword) 
+            {
+                // Prevent form submission
+                event.preventDefault();
+
+                // Optional: Focus the first mismatched input field
+                document.getElementById('org_confirm_password').focus();
+            }
+        });
+    </script>
 </html>
 
 <!---------->
@@ -251,7 +288,7 @@
     // Process form submission
     if ($_SERVER["REQUEST_METHOD"] === "POST") 
     {
-        // Validate registration type
+        // Retrieve registration type
         $registration_type = $_POST['registration_type'] ?? null;
 
         // Sanitize input data
