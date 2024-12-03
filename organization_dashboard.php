@@ -202,7 +202,7 @@
     <head>
         <meta charset="UTF-8">
         <title>Organization Dashboard</title>
-        <link rel="stylesheet" href="css/style.css">
+        <link rel="stylesheet" type="text/css" href="css/orginization_dashboard.css">
     </head>
 
     <!-- Display organization name -->
