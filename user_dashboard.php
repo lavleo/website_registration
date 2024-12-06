@@ -319,10 +319,10 @@
     <head>
         <meta charset="UTF-8">
         <title>User Dashboard</title>
-        <link rel="stylesheet" href="css/user_dashboard.css">
+        <link rel="stylesheet" href="css/dashboard.css">
     </head>
 
-    <!-- Banner -->
+    <!-- Top Bar -->
     <header>
         <h1>Welcome, <?php echo $user_name; ?>!</h1>
         <img src="images/u2.png" alt="Logo" />         

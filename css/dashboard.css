@@ -37,7 +37,6 @@ header h1 {
 
 header img {
     max-height: 30px;
-    margin-right: 150px;
 }
 
 /* Full-Width Image Section */
@@ -244,6 +243,9 @@ input[type="password"]:focus {
     color: #2ecc71; /* Green text */
 }
 
+#note{
+    font-size: 12px;
+}
 
 /* Media Queries */
 @media (max-width: 768px) {
