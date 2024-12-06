@@ -9,7 +9,7 @@
     <head>
         <meta charset="UTF-8">
         <title>Register</title>
-        <link rel="stylesheet" href="css/login.css">
+        <link rel="stylesheet" type="text/css" href="css/register.css">
     </head>
 
     <!-- Company logo -->
