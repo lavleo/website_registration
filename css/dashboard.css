@@ -166,7 +166,7 @@ form button:hover {
     text-align: center;
     color: inherit; 
     line-height: inherit; /* Match the line height of the parent element */
-    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif; /* Match the font family of the parent element */
+    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif; 
     margin: 0; 
     padding: 0; 
     display: inline;
