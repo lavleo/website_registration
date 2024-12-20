@@ -2,6 +2,7 @@
 <!-- PHP --->
 <!---------->
 <?php
+    // Disable error messages and start the session
     ini_set('display_errors', '0');
     session_start();
 
@@ -34,6 +35,14 @@
     $query->bind_result($corporate_user_check);
     $query->fetch();
     $query->close();
+
+     // Check if the user is opted into marketing emails
+     $query = $conn->prepare("SELECT marketing_opt_in FROM users WHERE id = ?");
+     $query->bind_param("i", $user_id);
+     $query->execute();
+     $query->bind_result($marketing_opt_in);
+     $query->fetch();
+     $query->close();
 
     // Handle logout
     if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['logout'])) 
@@ -112,6 +121,84 @@
         }
     }
     
+    // Handle change in account preferences
+    if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['change_preferences'])) 
+    {
+        $corporateCheck = isset($_POST['corporate_user_check']) ? 1 : 0; 
+        $marketingCheck = isset($_POST['marketing_opt_in']) ? 1 : 0; 
+
+        // Toggle for corporate user check
+        if ($corporateCheck) 
+        {
+            $stmt = $conn->prepare("UPDATE users SET corporate_user_check = 1 WHERE id = ?");
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            $stmt->close();
+        }
+        else
+        {
+            $stmt = $conn->prepare("UPDATE users SET corporate_user_check = 0 WHERE id = ?");
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            $stmt->close();
+        }
+    
+        // Toggle for marketing opt-in
+        if ($marketingCheck) 
+        {
+            $stmt = $conn->prepare("UPDATE users SET marketing_opt_in = 1 WHERE id = ?");
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            $stmt->close();
+        }
+        else
+        {
+            $stmt = $conn->prepare("UPDATE users SET marketing_opt_in = 0 WHERE id = ?");
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            $stmt->close();
+        }
+
+        echo "<div class='modal-overlay' onclick='dismissModal()'>
+                <div class='modal-message success'>
+                    <p>Successfully changed preferences.</p>
+                </div>
+              </div>";
+        header("Refresh: 1; URL=user_dashboard.php?tab_token=$tab_token");
+    }
+
+    // Handle account deletion
+    if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_account'])) 
+    {
+        if (!isset($_POST['confirm_delete']) || $_POST['confirm_delete'] !== "yes") 
+        {
+            echo "<div class='modal-overlay' onclick='dismissModal()'>
+                    <div class='modal-message error'>
+                        <p>Please check the box confirming you understand what account deletion entails.</p>
+                    </div>
+                  </div>";
+        } 
+        else 
+        {
+            // Remove active registrations first
+            $stmt = $conn->prepare("DELETE FROM registrations WHERE user_id = ?");
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            $stmt->close();
+
+            // Delete the user account
+            $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            $stmt->close();
+
+            // Destroy the session and redirect
+            session_destroy();
+            header("Location: login.php");
+            exit();
+        }
+    }
+
     // Handle cancellation of a registration
     if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['cancel_registration'])) 
     {
@@ -309,6 +396,8 @@
             header("Refresh: 1; URL=user_dashboard.php?tab_token=$tab_token");
         }        
     }
+
+    $conn->close();
 ?>
 
 <!---------->
@@ -406,7 +495,7 @@
                     </div>
                 </div>
 
-                <!-- Allows the user to change their password-->
+                <!-- Allows the user to make changes regarding their account-->
                 <div class="content-section" hidden="hidden">
                     <h2>Change Password</h2>
                     <form method="POST" id="passwordForm" action="user_dashboard.php?tab_token=<?php echo htmlspecialchars($tab_token); ?>">
@@ -417,6 +506,47 @@
                         <input type="password" name="confirm_new_password" id="confirm_password" placeholder="Confirm Password" onkeyup='check();' required>
                         <span id='errorMessage'></span>
                         <button type="submit" name="change_password">Change Password</button>
+                    </form>
+
+                    <h2>Account Preferences</h2>
+                    <form method="POST" action="user_dashboard.php?tab_token=<?php echo htmlspecialchars($tab_token); ?>">
+                        <!-- Change corporate user preference-->
+                        <?php if ($corporate_user_check) 
+                              { ?>
+                                <label>
+                                    <input type="checkbox" name="corporate_user_check" value="1" checked> I am a corporate user registering a group.
+                                </label>
+                        <?php } 
+                              else 
+                              { ?>
+                                <label>
+                                    <input type="checkbox" name="corporate_user_check" value="1"> I am a corporate user registering a group.
+                                </label>
+                        <?php } ?>
+
+                         <!-- Change marketing opt in-->
+                        <?php if ($marketing_opt_in) 
+                              { ?>
+                                <label>
+                                    <input type="checkbox" name="marketing_opt_in" value="1" checked> I would like to receive marketing emails.
+                                </label>
+                        <?php } 
+                              else 
+                              { ?>
+                                <label>
+                                    <input type="checkbox" name="marketing_opt_in" value="1"> I would like to receive marketing emails.
+                                </label>
+                        <?php } ?>
+                        <button type="submit" name="change_preferences">Change Preferences</button>
+                    </form>
+
+                    <h2 id="delete">Delete Account</h2>
+                    <form method="POST" action="user_dashboard.php?tab_token=<?php echo htmlspecialchars($tab_token); ?>" onsubmit="return confirmDeletion();">
+                        <label>
+                            <input type="checkbox" name="confirm_delete" value="yes">
+                             I confirm that I want to delete my account. I understand that once my account is deleted, any and all data associated with my account cannot be retrieved.
+                        </label>
+                        <button type="submit" name="delete_account" id="delete">Delete My Account</button>
                     </form>
                 </div>
             </div>
@@ -499,5 +629,17 @@
                 overlay.addEventListener("click", dismissModal);
             }
         });
+
+        // Browser confirmation for delete
+        function confirmDeletion() 
+        {
+            return confirm("Are you sure you want to delete your account? This action cannot be undone.");
+        }
+
+        // Stop form resubmission popup on page refresh
+        if ( window.history.replaceState ) 
+        {
+            window.history.replaceState( null, null, window.location.href );
+        }
     </script>
 </html>

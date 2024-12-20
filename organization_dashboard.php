@@ -2,6 +2,7 @@
 <!-- PHP --->
 <!---------->
 <?php
+    // Disable error messages and start the session
     ini_set('display_errors', '0');
     session_start();
 
@@ -20,6 +21,14 @@
 
     // View active shifts
     $activeShifts = $conn->query("SELECT * FROM shifts WHERE organization_id = $user_id");
+
+    // Check if the user is opted into marketing emails
+    $query = $conn->prepare("SELECT marketing_opt_in FROM organizations WHERE id = ?");
+    $query->bind_param("i", $user_id);
+    $query->execute();
+    $query->bind_result($marketing_opt_in);
+    $query->fetch();
+    $query->close();
 
     // Handle logout
     if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['logout'])) 
@@ -95,6 +104,90 @@
             }
 
             $stmt->close();
+        }
+    }
+
+    // Handle change in account preferences
+    if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['change_preferences'])) 
+    {
+        $marketingCheck = isset($_POST['marketing_opt_in']) ? 1 : 0; 
+
+        // Toggle for marketing opt-in
+        if ($marketingCheck) 
+        {
+            $stmt = $conn->prepare("UPDATE organizations SET marketing_opt_in = 1 WHERE id = ?");
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            $stmt->close();
+        }
+        else
+        {
+            $stmt = $conn->prepare("UPDATE organizations SET marketing_opt_in = 0 WHERE id = ?");
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            $stmt->close();
+        }
+
+        echo "<div class='modal-overlay' onclick='dismissModal()'>
+                <div class='modal-message success'>
+                    <p>Successfully changed preferences.</p>
+                </div>
+            </div>";
+        header("Refresh: 1; URL=organization_dashboard.php?tab_token=$tab_token");
+    }
+
+    // Handle account deletion
+    if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_account'])) 
+    {
+        if (!isset($_POST['confirm_delete']) || $_POST['confirm_delete'] !== "yes") 
+        {
+            echo "<div class='modal-overlay' onclick='dismissModal()'>
+                    <div class='modal-message error'>
+                        <p>Please check the box confirming you understand what account deletion entails.</p>
+                    </div>
+                  </div>";
+        } 
+        else 
+        {
+             // Fetch all shifts associated with the organization
+             $stmt = $conn->prepare("SELECT id FROM shifts WHERE organization_id = ?");
+             $stmt->bind_param("i", $user_id);
+             $stmt->execute();
+             $result = $stmt->get_result();
+             $shift_ids = [];
+             while ($row = $result->fetch_assoc()) 
+             {
+                 $shift_ids[] = $row['id'];
+             }
+             $stmt->close();
+ 
+             // Delete all registrations associated with these shifts
+             if (!empty($shift_ids)) 
+             {
+                 $placeholders = implode(',', array_fill(0, count($shift_ids), '?'));
+                 $types = str_repeat('i', count($shift_ids));
+ 
+                 $stmt = $conn->prepare("DELETE FROM registrations WHERE shift_id IN ($placeholders)");
+                 $stmt->bind_param($types, ...$shift_ids);
+                 $stmt->execute();
+                 $stmt->close();
+             }
+ 
+             // Delete all shifts associated with the organization
+             $stmt = $conn->prepare("DELETE FROM shifts WHERE organization_id = ?");
+             $stmt->bind_param("i", $user_id);
+             $stmt->execute();
+             $stmt->close();
+ 
+             // Delete the organization account
+             $stmt = $conn->prepare("DELETE FROM organizations WHERE id = ?");
+             $stmt->bind_param("i", $user_id);
+             $stmt->execute();
+             $stmt->close();
+
+            session_destroy();
+            header("Location: login.php");
+            exit();
         }
     }
 
@@ -266,7 +359,7 @@
                 {
                     continue;
                 }
-                else if (preg_match("/^[a-zA-Z0-9\\s]+(\\,)? [a-zA-Z\\s]+(\\,)? [A-Z]{2} [0-9]{5,6}$/", $location) === false) 
+                else if (preg_match("/^[a-zA-Z0-9\\s]+(\\,)? [a-zA-Z\\s]+(\\,)? [A-Z]{2} [0-9]{5,6}$/", $location) === 0) 
                 {
                     continue;
                 }
@@ -310,6 +403,8 @@
                   </div>";
         }
     }
+
+    $conn->close();
 ?>
 
 <!---------->
@@ -372,7 +467,7 @@
                     <h2>Your Created Shifts</h2>
                     <div class="shifts">  
                         <?php while ($shift = $activeShifts->fetch_assoc()) 
-                            { ?>
+                              { ?>
                                 <div class='shift'>
                                     <p>Date: <?php echo $shift['date']; ?></p>
                                     <p>Time: <?php echo $shift['time']; ?></p>
@@ -388,7 +483,7 @@
                     </div>
                 </div>
 
-                <!-- Allows the user to change their password-->
+                <!-- Allows the user to make changes regarding their account-->
                 <div class="content-section" hidden="hidden">
                     <h2>Change Password</h2>
                     <form method="POST" id="passwordForm" action="organization_dashboard.php?tab_token=<?php echo htmlspecialchars($tab_token); ?>">
@@ -399,6 +494,33 @@
                         <input type="password" name="confirm_new_password" id="confirm_password" placeholder="Confirm Password" onkeyup='check();' required>
                         <span id='errorMessage'></span>
                         <button type="submit" name="change_password">Change Password</button>
+                    </form>
+
+                    <h2>Account Preferences</h2>
+                    <form method="POST" action="organization_dashboard.php?tab_token=<?php echo htmlspecialchars($tab_token); ?>">
+                         <!-- Change marketing opt in-->
+                        <?php if ($marketing_opt_in) 
+                              { ?>
+                                <label>
+                                    <input type="checkbox" name="marketing_opt_in" value="1" checked> I would like to receive marketing emails.
+                                </label>
+                        <?php } 
+                              else 
+                              { ?>
+                                <label>
+                                    <input type="checkbox" name="marketing_opt_in" value="1"> I would like to receive marketing emails.
+                                </label>
+                        <?php } ?>
+                        <button type="submit" name="change_preferences">Change Preferences</button>
+                    </form>
+
+                    <h2 id="delete">Delete Account</h2>
+                    <form method="POST" action="organization_dashboard.php?tab_token=<?php echo htmlspecialchars($tab_token); ?>" onsubmit="return confirmDeletion();">
+                        <label>
+                            <input type="checkbox" name="confirm_delete" value="yes">
+                             I confirm that I want to delete my account. I understand that once my account is deleted, any and all data associated with my account cannot be retrieved.
+                        </label>
+                        <button type="submit" name="delete_account" id="delete">Delete My Account</button>
                     </form>
                 </div>
             </div>
@@ -481,5 +603,17 @@
                 overlay.addEventListener("click", dismissModal);
             }
         });
+
+        // Browser confirmation for delete
+        function confirmDeletion() 
+        {
+            return confirm("Are you sure you want to delete your account? This action cannot be undone.");
+        }
+
+        // Stop form resubmission popup on page refresh
+        if ( window.history.replaceState ) 
+        {
+            window.history.replaceState( null, null, window.location.href );
+        }
     </script>
 </html>
